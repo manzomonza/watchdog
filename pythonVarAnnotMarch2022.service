@@ -1,0 +1,15 @@
+[Unit]
+Description=Python script to annotate IR output
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3.8 /home/ionadmin/ngs_variant_annotation/variantAnnotation/scripts/Python_Watchdog_Linux_MarchUpdate2022.py
+WorkingDirectory=/mnt/NGS_Diagnostik/Patientendaten
+StandardOutput=inherit
+StandardError=inherit
+Restart=on-failure
+RestartSec=10s
+User=root
+
+[Install]
+WantedBy=multi-user.target

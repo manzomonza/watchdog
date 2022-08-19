@@ -1,5 +1,5 @@
 [Unit]
-Description=Python script to annotate IR output
+Description=Python watchdog to extract from zip files and add entries to BIMI table
 
 [Service]
 Type=simple

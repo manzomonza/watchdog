@@ -17,11 +17,11 @@ import zipfile
 
 ### Patterns to check for
 if __name__ == "__main__":
-    patterns = ["*combined.xlsx", "*zip"]
-    ignore_patterns = ["*Filtered.zip"]
+    patterns = ["*combined*.xlsx", "*.zip"]
+    ignore_patterns = ["donotuse"]
     ignore_directories = False
     case_sensitive = True
-    my_event_handler = PatternMatchingEventHandler(patterns, ignore_patterns, ignore_directories, case_sensitive)
+    my_event_handler = PatternMatchingEventHandler(patterns,ignore_patterns, ignore_directories, case_sensitive)
 
 
 def unzipFile(zipfilepath):
@@ -32,12 +32,12 @@ def unzipFile(zipfilepath):
     prone, file ending regex is used to only select files ending in .zip to be
     checked by zipfile.is_zipfile().
     '''
-    filetest_zip = re.search(".zip$", zipfilepath)
-    if(filetest_zip != None):
-        dirpath = os.path.dirname(zipfilepath)
-        zip_ref=zipfile.ZipFile(zipfilepath, 'r')
-        zip_ref.extractall(dirpath)
-        zip_ref.close()
+    dirpath = os.path.dirname(zipfilepath)
+    zip_ref=zipfile.ZipFile(zipfilepath, 'r')
+    for file in zip_ref.namelist():
+        if file.startswith('QC/') | file.startswith('CNV_VCIB/'):
+            zip_ref.extract(file, dirpath)
+    zip_ref.close()
 
 
 
@@ -45,10 +45,17 @@ def unzipFile(zipfilepath):
 def on_created(event):
   print(f"File added {event.src_path}!")
   filepath = event.src_path
-
+  dirpath = os.path.dirname(filepath)
   ## zip file pipeline
-  if(zipfile.is_zipfile(filepath)):
-      unzipFile(filepath)
+  filetest = re.search(".zip$", filepath)
+  tcr_test = re.search('TCR', filepath)
+
+  if(filetest != None):
+      if(zipfile.is_zipfile(filepath)):
+          if(tcr_test != None):
+              print('tcr')
+          else:
+              unzipFile(filepath)
 
 
 def on_deleted(event):
@@ -61,12 +68,14 @@ def on_modified(event):
     '''
     print(f"File modified {event.src_path}")
     filepath = event.src_path
-    filetest = re.search("combined.xlsx$", filepath)
+    filetest = re.search(".xlsx$", filepath)
     if(filetest != None):
       subprocess.call(["/usr/bin/Rscript",
       "--vanilla", bimi_check_R,
       "--file",
       filepath])
+      ## Git autocommit
+      subprocess.call(['/usr/bin/sh', '/home/ionadmin/ngs_variant_annotation/variantAnnotation/NGS_mutation_list/autocommit.sh'])
 
 def on_moved(event):
   print(f"File moved from {event.src_path} to {event.dest_path}")
@@ -78,8 +87,6 @@ my_event_handler.on_created = on_created
 my_event_handler.on_deleted = on_deleted
 my_event_handler.on_modified = on_modified
 my_event_handler.on_moved = on_moved
-
-### exception because of folder permissions (taken from https://github.com/spyder-ide/spyder/issues/12636)
 
 
 ## Observer -- monitors for file changes
@@ -93,7 +100,7 @@ my_observer.schedule(my_event_handler, path, recursive=go_recursively)
 my_observer.start()
 try:
     while True:
-        time.sleep(10)
+        time.sleep(5)
         #print("Checking for new input files.")
 except KeyboardInterrupt:
     my_observer.stop()

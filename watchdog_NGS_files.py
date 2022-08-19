@@ -2,11 +2,11 @@
 # installed from https://pypi.org/project/watchdog/
 
 ## Filepaths of scripts and directories
-TCR_render_script = "/home/ionadmin/ngs_variant_annotation/variantAnnotation/scripts/TCR_Rmd_render_script.R"
+TCR_render_script = "/home/ionadmin/watchdog/TCR_PanClonality/TCR_Rmd_render_script.R"
 NGS_annotation_R = "/home/ionadmin/ngs_variant_annotation/variantAnnotation/scripts/NGSannotation_pipeline.R"
 bimi_check_R = "/home/ionadmin/ngs_variant_annotation/variantAnnotation/scripts/bimiCheck.R"
-Patiendata_filepath = "/mnt/NGS_Diagnostik/Patientendaten/"
-
+Patientdata_filepath = "/mnt/NGS_Diagnostik/Patientendaten/"
+variantCollection_R = "/home/ionadmin/ngs_variant_annotation/variantCollection/variantCollection.R"
 
 
 import time
@@ -18,8 +18,8 @@ import os
 
 ### Patterns to check for
 if __name__ == "__main__":
-    patterns = ["*.tsv","*.clone_summary.csv"]
-    ignore_patterns = ["*annotated*","Fusion.tsv", "Cnv.tsv", "Snv.tsv", "*variant_details.tsv", "Summary.tsv","summary.tsv"]
+    patterns = ["*.tsv","*.clone_summary.csv", "*_watchdog"]
+    ignore_patterns = ["*annotated*", "Cnv.tsv", "Snv.tsv", "*variant_details.tsv", "Summary.tsv","summary.tsv"]
     ignore_directories = False
     case_sensitive = True
     my_event_handler = PatternMatchingEventHandler(patterns, ignore_patterns, ignore_directories, case_sensitive)
@@ -32,7 +32,6 @@ def on_created(event):
 
   ## Check if absolute filepath is tsv file
   filetest_std = re.search(".tsv$", filepath)
-
 
   ## Check if absolute filepath is clone summary file
   filetest_TCR = re.search(".clone_summary.csv$", filepath)
@@ -58,7 +57,17 @@ def on_created(event):
       "--vanilla", NGS_annotation_R,
       "--file",
       event.src_path])
-
+'''
+  elif(os.path.isdir(filepath)):
+      filepath_watchdog = re.search("_watchdog", filepath)
+      if(filepath_watchdog != None):
+          # Adding watchdog variants to tables
+          time.sleep(5)
+          subprocess.call(["/usr/bin/Rscript",
+          "--vanilla", variantCollection_R,
+          "--dir",
+          filepath])
+'''
 def on_deleted(event):
   print(f"File deleted {event.src_path}!")
 
@@ -83,7 +92,7 @@ my_event_handler.on_moved = on_moved
 
 
 ## Observer -- monitors for file changes
-path = Patiendata_filepath
+path = Patientdata_filepath
 go_recursively = True
 my_observer = PollingObserver()
 my_observer.schedule(my_event_handler, path, recursive=go_recursively)
